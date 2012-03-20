@@ -2,3 +2,4 @@ name = Views Node Access
 description = Node Access controls per user role for Views.
 core = 7.x
 files[] = views_node_access.module
+files[] = views_node_access_handler_field_controls.inc

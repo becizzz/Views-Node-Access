@@ -1,7 +1,45 @@
 <?php
 
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+/**
+ * Implements hook_views_api().
  */
-?>
+function views_node_access_views_api() {
+  return array(
+    'api' => 2,
+  );
+}
+
+/**
+ * Implements hook_node_grants().
+ */
+function views_node_access_node_grants($account, $op) {
+  $node_grants = array();
+  $roles = $account->roles;
+  $node_grants = array('views_node_access' => array_keys($roles));
+  return $node_grants;
+}
+
+/**
+ * Implements hook_node_access_recorde().
+ */
+function views_node_access_node_access_records($node) {
+  $grants = array();
+  $grants = views_node_access_build_grants($node);
+  return $grants;
+}
+
+function views_node_access_build_grants($node, $change = FALSE, $rid = NULL) {
+  $grants = array();
+  $user_roles = user_roles();
+  foreach ($user_roles as $rid => $role) {
+    $grants[] = array(
+      'realm' => 'views_node_access',
+      'gid' => $rid,
+      'grant_view' => 1,
+      'grant_update' => 0,
+      'grant_delete' => 0,
+      'priority' => 0,
+    );
+  }
+  return $grants;
+}
