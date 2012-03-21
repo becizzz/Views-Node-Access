@@ -28,6 +28,11 @@ class views_node_access_handler_field_controls extends views_handler_field {
       '#collapsed' => FALSE,
     );
     $user_roles = user_roles();
+    // User role "authenticated user" is not used when other custom
+    // created user roles exist.
+    if (sizeof($user_roles) > 2) {
+      unset($user_roles[2]);
+    }
     // User roles select.
     $form['views_node_access']['user_roles'] = array(
       '#type' => 'select',
@@ -35,22 +40,59 @@ class views_node_access_handler_field_controls extends views_handler_field {
       '#options' => array(0 => t('None')) + $user_roles,
       '#default_value' => $this->options['views_node_access']['user_roles'],
     );
-//    $myFile = "/tmp/handlerDebug.txt";
-//    $fh = fopen($myFile, 'a+') or die("can't open file");;
-//    fwrite($fh, print_r($this->options, TRUE));
-//    fclose($fh);
+  }
+  
+  function options_validate(&$form, &$form_state) {
+    parent::options_validate($form, $form_state);
+    // Check if user role is set.
+    if ($form_state['values']['options']['views_node_access']['user_roles'] == 0) {
+      form_error($form['views_node_access'], t('User role must be selected!'));
+    }
+  }
+  
+  function options_submit(&$form, &$form_state) {
+    parent::options_submit($form, $form_state);
+    $user_roles = user_roles();
+    if ($form_state['values']['options']['label'] == 'Views Node Access') {
+      // Set label the same as user role name if default label was not changed.
+      $form_state['values']['options']['label'] = $user_roles[$form_state['input']['options']['views_node_access']['user_roles']];
+    }
   }
   
   function render($values) {
-//    $query = db_select('node_access', 'na');
-//    $query->addField('na', 'grant_view', 'view');
-//    $query->condition('na.nid', $values->nid);
-//    $query->condition('na.realm', 'views_node_access');
-//    $query->condition('na.gid', $this->options['views_node_access']['user_roles']);
-    $myFile = "/tmp/handlerDebug.txt";
-    $fh = fopen($myFile, 'a+') or die("can't open file");;
-    fwrite($fh, print_r($this->options, TRUE));
-    fclose($fh);
+    // Make sure Drupal Ajax framework javascript is around.
+    drupal_add_library('system', 'drupal.ajax');
+    $query = db_select('views_node_access', 'foo');
+    $query->fields('foo');
+    $query->condition('foo.nid', $values->nid);
+    $query->condition('foo.rid', $this->options['views_node_access']['user_roles']);
+    $result = $query->execute()->fetchObject();
+    $destination = drupal_get_destination();
+    $link_options = array(
+      'html' => TRUE,
+      'attributes' => array(
+        'class' => array(
+          'use-ajax',
+          'access-' . $values->nid . '-' . $this->options['views_node_access']['user_roles'],
+        ),
+      ),
+      'query' => array(
+        'destination' => $destination['destination'],
+      ),
+    );
+    $access = $result ? 'false' : 'true';
+    $opposite = $access == 'true' ? 'false' : 'true';
+    $img_options = array(
+      'path' => base_path() . drupal_get_path('module', 'taxonomy_tools') . '/img/' . $access . '.png',
+      'title' => t('change'),
+      'attributes' => array(),
+    );
+    $link = 'views-node-access/nojs/' . $values->nid . '/' . $this->options['views_node_access']['user_roles'] . '/' . $opposite;
+    $markup = l(theme_image($img_options), $link, $link_options);
+    $element = array(
+      '#markup' => $markup,
+      '#access' => user_access('administer node access'),
+    );
+    return drupal_render($element);
   }
-  
 }

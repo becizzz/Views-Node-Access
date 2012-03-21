@@ -1,5 +1,7 @@
-name = Views Node Access
+name = Node Access for Views
 description = Node Access controls per user role for Views.
 core = 7.x
+package = Node Access
 files[] = views_node_access.module
 files[] = views_node_access_handler_field_controls.inc
+dependencies[] = taxonomy_tools

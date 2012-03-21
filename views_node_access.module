@@ -10,36 +10,91 @@ function views_node_access_views_api() {
 }
 
 /**
- * Implements hook_node_grants().
+ * Implements hook_node_access_records_alter().
  */
-function views_node_access_node_grants($account, $op) {
-  $node_grants = array();
-  $roles = $account->roles;
-  $node_grants = array('views_node_access' => array_keys($roles));
-  return $node_grants;
+function views_node_access_node_access_records_alter(&$grants, $node) {
+  $query = db_select('views_node_access', 'foo');
+  $query->addField('foo', 'rid');
+  $query->condition('foo.nid', $node->nid);
+  $result = $query->execute()->fetchAll();
+  if ($result) {
+    foreach ($grants as $key => $grant) {
+      foreach ($result as $role) {
+        if ($grant['gid'] == $role->rid) {
+          unset($grants[$key]);
+        }
+      }
+    }
+  }
 }
 
 /**
- * Implements hook_node_access_recorde().
+ * Implements hook_menu(). 
  */
-function views_node_access_node_access_records($node) {
-  $grants = array();
-  $grants = views_node_access_build_grants($node);
-  return $grants;
+function views_node_access_menu() {
+  $items = array();
+  $items['views-node-access/nojs'] = array(
+    'page callback' => 'views_node_access_change_access',
+    'page arguments' => array(1, 2, 3, 4),
+    'access arguments' => array('administer node access'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['views-node-access/ajax'] = array(
+    'delivery callback' => 'ajax_deliver',
+  ) + $items['views-node-access/nojs'];
+  return $items;
 }
 
-function views_node_access_build_grants($node, $change = FALSE, $rid = NULL) {
-  $grants = array();
-  $user_roles = user_roles();
-  foreach ($user_roles as $rid => $role) {
-    $grants[] = array(
-      'realm' => 'views_node_access',
-      'gid' => $rid,
-      'grant_view' => 1,
-      'grant_update' => 0,
-      'grant_delete' => 0,
-      'priority' => 0,
-    );
+function views_node_access_change_access($ajax, $nid, $rid, $access) {
+  $is_ajax = $ajax === 'ajax';
+  if ($access == 'false') {
+    // Access is being changed to "deny".
+    $query = db_insert('views_node_access');
+    $query->fields(array('nid' => $nid, 'rid' => $rid));
+    $query->execute();
+    $changed = TRUE;
   }
-  return $grants;
+  else {
+    // Access is being changed to "allow"
+    $query = db_delete('views_node_access');
+    $query->condition(db_and()->condition('nid', $nid)->condition('rid', $rid));
+    $query->execute();
+  }
+  $destination = explode('=', $_SERVER['QUERY_STRING']);
+  // Rebuild node access grants.
+  $node = node_load($nid);
+  node_access_acquire_grants($node);
+  if ($is_ajax) {
+    $commands = array();
+    // Replace the link.
+    $link_options = array(
+      'html' => TRUE,
+      'attributes' => array(
+        'class' => array(
+          'use-ajax',
+          'access-' . $nid . '-' . $rid,
+        ),
+      ),
+      'query' => array(
+        $destination[0] => $destination[1],
+      ),
+    );
+    $opposite = $access == 'true' ? 'false' : 'true';
+    $img_options = array(
+      'path' => base_path() . drupal_get_path('module', 'taxonomy_tools') . '/img/' . $access . '.png',
+      'title' => t('change'),
+      'attributes' => array(),
+    );
+    $link = 'views-node-access/nojs/' . $nid . '/' . $rid . '/' . $opposite;
+    $markup = l(theme_image($img_options), $link, $link_options);
+    $element = array(
+      '#markup' => $markup,
+      '#access' => user_access('administer node access'),
+    );
+    $commands[] = ajax_command_replace('a.access-' . $nid . '-' . $rid, drupal_render($element));
+    return array('#type' => 'ajax', '#commands' => $commands);
+  }
+  else {
+    drupal_goto($destination[1]);
+  }
 }
