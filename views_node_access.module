@@ -17,10 +17,13 @@ function views_node_access_node_access_records_alter(&$grants, $node) {
   $query->addField('foo', 'rid');
   $query->condition('foo.nid', $node->nid);
   $result = $query->execute()->fetchAll();
+  // Result from DB means that node access is denied.
   if ($result) {
     foreach ($grants as $key => $grant) {
       foreach ($result as $role) {
         if ($grant['gid'] == $role->rid) {
+          // Remove the grant for the role which is not allowed to access
+          // given node.
           unset($grants[$key]);
         }
       }
