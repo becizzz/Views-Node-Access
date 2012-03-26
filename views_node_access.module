@@ -98,3 +98,12 @@ function views_node_access_change_access($ajax, $nid, $rid, $access) {
     drupal_goto($destination[1]);
   }
 }
+
+function views_node_access_permission() {
+  return array(
+    'administer node access' => array(
+      'title' => t('Administer Node Access'),
+      'description' => t('Change node access settings.'),
+    ),
+  );
+}
