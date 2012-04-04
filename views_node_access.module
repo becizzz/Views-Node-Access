@@ -67,6 +67,10 @@ function views_node_access_change_access($ajax, $nid, $rid, $access) {
   // Rebuild node access grants.
   $node = node_load($nid);
   node_access_acquire_grants($node);
+  if (module_exists('apachesolr_access')) {
+    // Mark the node for re-indexing.
+    apachesolr_mark_entity('node', $nid);
+  }
   if ($is_ajax) {
     $commands = array();
     // Replace the link.
