@@ -55,7 +55,6 @@ function views_node_access_change_access($ajax, $nid, $rid, $access) {
     $query = db_insert('views_node_access');
     $query->fields(array('nid' => $nid, 'rid' => $rid));
     $query->execute();
-    $changed = TRUE;
   }
   else {
     // Access is being changed to "allow"
@@ -69,7 +68,7 @@ function views_node_access_change_access($ajax, $nid, $rid, $access) {
   node_access_acquire_grants($node);
   if (module_exists('apachesolr_access')) {
     // Mark the node for re-indexing.
-    apachesolr_mark_entity('node', $nid);
+    apachesolr_mark_node($nid);
   }
   if ($is_ajax) {
     $commands = array();
