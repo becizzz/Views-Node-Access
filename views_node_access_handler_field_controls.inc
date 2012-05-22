@@ -60,39 +60,63 @@ class views_node_access_handler_field_controls extends views_handler_field {
   }
   
   function render($values) {
-    // Make sure Drupal Ajax framework javascript is around.
-    drupal_add_library('system', 'drupal.ajax');
-    $query = db_select('views_node_access', 'foo');
-    $query->fields('foo');
-    $query->condition('foo.nid', $values->nid);
-    $query->condition('foo.rid', $this->options['views_node_access']['user_roles']);
+    // First check values in node_access table.
+    $query = db_select('node_access', 'na');
+    $query->fields('na');
+    $query->condition('na.nid', $values->nid);
+    $query->condition('na.gid', $this->options['views_node_access']['user_roles']);
+    $query->condition('na.grant_view', 1);
     $result = $query->execute()->fetchObject();
-    $destination = drupal_get_destination();
-    $link_options = array(
-      'html' => TRUE,
-      'attributes' => array(
-        'class' => array(
-          'use-ajax',
-          'access-' . $values->nid . '-' . $this->options['views_node_access']['user_roles'],
+    
+    if ($result) {
+      // Get the values from views_node_access table and
+      // display links for changing the value.
+      // Make sure Drupal Ajax framework javascript is around.
+      drupal_add_library('system', 'drupal.ajax');
+      $query = db_select('views_node_access', 'foo');
+      $query->fields('foo');
+      $query->condition('foo.nid', $values->nid);
+      $query->condition('foo.rid', $this->options['views_node_access']['user_roles']);
+      $result = $query->execute()->fetchObject();
+      $destination = drupal_get_destination();
+      $link_options = array(
+        'html' => TRUE,
+        'attributes' => array(
+          'class' => array(
+            'use-ajax',
+            'access-' . $values->nid . '-' . $this->options['views_node_access']['user_roles'],
+          ),
         ),
-      ),
-      'query' => array(
-        'destination' => $destination['destination'],
-      ),
-    );
-    $access = $result ? 'false' : 'true';
-    $opposite = $access == 'true' ? 'false' : 'true';
-    $img_options = array(
-      'path' => base_path() . drupal_get_path('module', 'taxonomy_tools') . '/img/' . $access . '.png',
-      'title' => t('change'),
-      'attributes' => array(),
-    );
-    $link = 'views-node-access/nojs/' . $values->nid . '/' . $this->options['views_node_access']['user_roles'] . '/' . $opposite;
-    $markup = l(theme_image($img_options), $link, $link_options);
-    $element = array(
-      '#markup' => $markup,
-      '#access' => user_access('administer node access'),
-    );
+        'query' => array(
+          'destination' => $destination['destination'],
+        ),
+      );
+      $access = $result ? 'false' : 'true';
+      $opposite = $access == 'true' ? 'false' : 'true';
+      $img_options = array(
+        'path' => base_path() . drupal_get_path('module', 'taxonomy_tools') . '/img/' . $access . '.png',
+        'title' => t('change'),
+        'attributes' => array(),
+      );
+      $link = 'views-node-access/nojs/' . $values->nid . '/' . $this->options['views_node_access']['user_roles'] . '/' . $opposite;
+      $markup = l(theme_image($img_options), $link, $link_options);
+      $element = array(
+        '#markup' => $markup,
+        '#access' => user_access('administer node access'),
+      );
+    }
+    else {
+      $img_options = array(
+        'path' => base_path() . drupal_get_path('module', 'taxonomy_tools') . '/img/false.png',
+        'title' => t('not changeable'),
+        'attributes' => array(),
+      );
+      $markup = theme_image($img_options);
+      $element = array(
+        '#markup' => $markup,
+        '#access' => user_access('administer node access'),
+      );
+    }
     return drupal_render($element);
   }
 }
