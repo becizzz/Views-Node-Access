@@ -70,6 +70,8 @@ function views_node_access_change_access($ajax, $nid, $rid, $access) {
     // Mark the node for re-indexing.
     apachesolr_mark_node($nid);
   }
+  // Allow other modules to act on access changes.
+  module_invoke_all('node_access_change', $node);
   if ($is_ajax) {
     $commands = array();
     // Replace the link.
